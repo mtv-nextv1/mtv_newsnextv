@@ -1,5 +1,11 @@
 name: Telegram news sync
 on:
+  push:
+    paths:
+      - ".github/workflows/telegram-news-sync.yml"
+      - "scripts/sync_telegram.py"
+      - "news.json"
+      - "telegram-cursor.json"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
