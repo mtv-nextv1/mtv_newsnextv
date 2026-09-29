@@ -22,7 +22,7 @@
 <div class="maintenance-screen" id="maintenanceScreen" role="status" aria-live="polite"><div class="maintenance-card"><div class="mark">MTV РОССИЯ · ОБНОВЛЕНИЕ</div><h1>Сайт обновляется<br>или на технических работах.</h1><p>Мы скоро вернёмся. Пока сайт обновляется, следите за новостями в наших Telegram-каналах.</p><div class="maintenance-links"><a href="https://t.me/nextv_itv" target="_blank" rel="noopener">Telegram · NEXTV / ITV ↗</a><a class="secondary" href="https://t.me/mtv_1russia" target="_blank" rel="noopener">Telegram · MTV Россия ↗</a></div></div></div>\n<div class="admin" id="admin"><div class="adminbar"><a class="logo" href="#">MTV<i style="color:var(--pink)">.</i> <small style="font-size:11px;letter-spacing:0">STUDIO</small></a><div class="tabs" id="tabs"><button class="active" data-tab="overview">Обзор</button><button data-tab="content">Контент</button><button data-tab="news">Новости</button><button data-tab="team">Команда</button><button data-tab="settings">Контакты</button></div><div><span class="pill" id="roleBadge">СОЗДАТЕЛЬ</span> <button class="btn" onclick="logoutAdmin()">Выйти</button></div></div><div class="adminmain" id="adminContent"></div></div>
 <script>
 const defaults={heroTag:'MTV ORIGINALS · 2026',heroTitle:'ГРОМЧЕ.\nСМЕЛЕЕ.\nБЛИЖЕ.',heroText:'Музыка, люди и истории, которые задают настроение. Заходи в новый ритм MTV Россия.',aboutText:'MTV — пространство музыки и поп-культуры, где важны новые голоса, смелые идеи и люди, которые меняют правила.',footerText:'Музыка. Культура. Сейчас. Следи за обновлениями и присоединяйся к сообществу.',email:'hello@mtv.example',copyright:'© 2026 MTV Россия · Концепт сайта',news:[{category:'MTV NEWS',title:'Новый сезон начинается с громкого сигнала',body:'Новости музыки, поп-культуры и новых творческих проектов — в одном месте.',art:'MTV',color:''},{category:'ВИДЕО · ПРЕМЬЕРА',title:'На повторе: треки, которые задают настроение',body:'Подборка редакции для тех, кто всегда на своей частоте.',art:'▶',color:'linear-gradient(135deg,#0b3c55,#42d9db)'},{category:'КУЛЬТУРА · ГИД',title:'Что добавить в культурный плейлист',body:'Открытия, события и идеи для следующего большого впечатления.',art:'★',color:'linear-gradient(135deg,#572015,#ff9a39)'}],programs:[{title:'MTV Originals',body:'Истории за пределами плейлиста.',number:'01 / ORIGINALS'},{title:'Music Radar',body:'Новые имена и музыкальные открытия.',number:'02 / MUSIC'},{title:'Culture Club',body:'Люди, идеи и культурные повороты.',number:'03 / CULTURE'}],team:[{name:'MTVA',role:'Создатель'},{name:'Редакция',role:'Админ'},{name:'Модератор',role:'Модератор'}]};
-let data;try{data=JSON.parse(localStorage.getItem('mtvData'))||structuredClone(defaults)}catch(e){data=structuredClone(defaults)}let role='Создатель',tab='overview';
+let data;try{data=JSON.parse(localStorage.getItem('mtvData'))||structuredClone(defaults)}catch(e){data=structuredClone(defaults)}let role=sessionStorage.getItem('mtvAdminRole')||'Создатель',tab='overview',globalMaintenanceOn=false;
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function toast(s){let t=document.getElementById('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400)}
 function save(){localStorage.setItem('mtvData',JSON.stringify(data));render();toast('Сохранено в этом браузере')}
@@ -93,17 +93,19 @@ function toggleMaintenance(){
  applyMaintenance();
 }
 function applyMaintenance(){
- const on=localStorage.getItem('mtvMaintenanceMode')==='on';
+ const on=globalMaintenanceOn||localStorage.getItem('mtvMaintenanceMode')==='on';
  const isAdmin=sessionStorage.getItem('mtvAdminAuthenticated')==='yes';
  const screen=document.getElementById('maintenanceScreen');
  if(screen)screen.classList.toggle('active',on&&!isAdmin);
  document.body.style.overflow=on?'hidden':'';
  const b=document.getElementById('maintenanceToggle'),s=document.getElementById('maintenanceStatus');
  if(b)b.textContent=on?'Выключить режим':'Включить режим';
- if(s)s.textContent=on?'Режим включён в этом браузере':'Режим выключен';
+ if(s)s.textContent=globalMaintenanceOn?'ГЛОБАЛЬНЫЙ режим включён через maintenance.json':(on?'Локальный предпросмотр включён только в этом браузере':'Глобальный режим выключен; переключатель — локальный предпросмотр');
 }
 const maintenanceObserver=new MutationObserver(applyMaintenance);
 const adminContent=document.getElementById('adminContent');
 if(adminContent)maintenanceObserver.observe(adminContent,{childList:true,subtree:true});
 applyMaintenance();
+fetch('./maintenance.json',{cache:'no-store'}).then(r=>r.ok?r.json():{}).then(cfg=>{globalMaintenanceOn=cfg.enabled===true;applyMaintenance()}).catch(()=>{});
+if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('login').classList.add('open')}
 </script></body></html>
