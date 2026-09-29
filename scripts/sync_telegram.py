@@ -1,30 +1,15 @@
 import html
 import json
-import os
 import re
-import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
-# Public channel previews provide recent history; Bot API polling adds new posts.
+# Import public Telegram channel previews only; no bot or API token is required.
 ALLOWED = {"nextv_itv", "mtv_1russia"}
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
-API = "https://api.telegram.org/bot" + TOKEN + "/"
 CURSOR = Path("telegram-cursor.json")
 FEED = Path("news.json")
-MAX_HISTORY_PAGES = 5
+MAX_HISTORY_PAGES = 12
 USER_AGENT = "Mozilla/5.0 (compatible; MTVNewsSync/1.0)"
-
-
-def telegram(method, params):
-    body = urllib.parse.urlencode(params).encode()
-    request = urllib.request.Request(API + method, data=body)
-    with urllib.request.urlopen(request, timeout=25) as response:
-        result = json.load(response)
-    if not result.get("ok"):
-        raise RuntimeError("Telegram API request failed: " + method)
-    return result["result"]
 
 
 def plain_text(fragment):
@@ -114,8 +99,7 @@ items = json.loads(FEED.read_text()) if FEED.exists() else []
 if not isinstance(items, list):
     items = []
 
-# Fetch the newest posts every run and progressively backfill older history.
-# The persistent per-channel cursor prevents re-reading the same old pages forever.
+# Fetch recent posts and progressively backfill older public history. The cursor advances on each run.
 history_count = 0
 history_before = cursor.get("history_before", {})
 for username in sorted(ALLOWED):
@@ -137,49 +121,9 @@ for username in sorted(ALLOWED):
     if older_oldest is not None:
         history_before[username] = older_oldest
 
-# Bot API is optional for historical import; configure a secret to receive new posts.
+# Public channel previews are the only source; no bot token is used.
 updates = []
-offset = int(cursor.get("offset", 0))
-if TOKEN:
-    try:
-        updates = telegram("getUpdates", {
-            "offset": offset,
-            "timeout": 0,
-            "allowed_updates": json.dumps(["channel_post"]),
-        })
-        for update in updates:
-            offset = max(offset, int(update["update_id"]) + 1)
-            post = update.get("channel_post")
-            if not post:
-                continue
-            chat = post.get("chat", {})
-            username = (chat.get("username") or "").lower()
-            if username not in ALLOWED:
-                continue
-            message_id = post.get("message_id")
-            key = username + ":" + str(message_id)
-            if key in seen:
-                continue
-            text = (post.get("text") or post.get("caption") or "").strip()
-            if not text:
-                text = "Публикация в Telegram — откройте пост по ссылке."
-            lines = [line.strip() for line in text.splitlines() if line.strip()]
-            items.append({
-                "id": key,
-                "category": "TELEGRAM · " + username.upper(),
-                "date": datetime.fromtimestamp(int(post.get("date", 0)), timezone.utc).strftime("%Y-%m-%d") if post.get("date") else "TELEGRAM",
-                "title": lines[0][:180],
-                "body": (" ".join(lines[1:]) if len(lines) > 1 else text)[:700],
-                "art": "TG",
-                "color": "blue",
-                "url": "https://t.me/" + username + "/" + str(message_id),
-                "source": username,
-            })
-            seen.add(key)
-    except Exception as exc:
-        print("Bot API polling failed; public history was still collected:", type(exc).__name__)
-else:
-    print("TELEGRAM_BOT_TOKEN is not set; imported public channel history only.")
+offset = 0
 
 # Deduplicate by stable id/url and keep newest items first.
 unique = []
@@ -192,4 +136,4 @@ for item in sorted(items, key=lambda item: str(item.get("date", "")), reverse=Tr
     unique.append(item)
 FEED.write_text(json.dumps(unique[:100], ensure_ascii=False, indent=2) + "\n")
 CURSOR.write_text(json.dumps({"offset": offset, "seen": list(seen)[-500:], "history_before": history_before}, ensure_ascii=False, indent=2) + "\n")
-print("Imported", history_count, "historical posts; processed", len(updates), "updates; feed has", min(len(unique), 100), "posts.")
+print("Imported", history_count, "new public-history posts; feed has", min(len(unique), 100), "posts.")
