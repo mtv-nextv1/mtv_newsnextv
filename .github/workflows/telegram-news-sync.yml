@@ -22,9 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - name: Import channel posts
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      - name: Import public Telegram channel history (no bot required)
         run: python scripts/sync_telegram.py
       - name: Commit news feed
         run: |
