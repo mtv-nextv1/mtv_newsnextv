@@ -117,11 +117,17 @@ render();
  }
  function applyPage(){
    const p=page();
-   const sections={news:document.getElementById('news'),shows:document.getElementById('shows'),about:document.getElementById('about'),contacts:document.getElementById('contacts')};
+   const sections={news:document.getElementById('news'),shows:document.getElementById('shows'),about:document.getElementById('about')};
+   const footer=document.getElementById('contacts');
    document.querySelector('.hero').style.display=p==='home'?'block':'none';
-   Object.entries(sections).forEach(([key,el])=>{if(el)el.style.display=p===key?'block':'none'});
-   document.getElementById('contacts').style.display=p==='contacts'?'block':'none';
+   // The home route is the full landing page: keep its news grid visible.
+   Object.entries(sections).forEach(([key,el])=>{if(el)el.style.display=(p==='home'||p===key)?'block':'none'});
+   if(footer)footer.style.display='block';
    document.title=({home:'MTV Россия',news:'Новости MTV',shows:'Проекты MTV',about:'О канале MTV',contacts:'Контакты MTV'})[p]+' — Музыка. Культура. Сейчас.';
+   if(p==='contacts'){
+     document.querySelector('.hero').style.display='none';
+     Object.entries(sections).forEach(([key,el])=>{if(el)el.style.display='none'});
+   }
    routeLinks();
  }
  window.addEventListener('popstate',applyPage);
