@@ -34,11 +34,11 @@ def plain_text(fragment):
     return re.sub(r"\n{3,}", "\n\n", html.unescape(fragment)).strip()
 
 
-def fetch_history(username):
+def fetch_history(username, before=None, max_pages=MAX_HISTORY_PAGES):
     posts = []
-    before = None
+    oldest_found = None
     visited = set()
-    for _ in range(MAX_HISTORY_PAGES):
+    for _ in range(max_pages):
         url = "https://t.me/s/" + username
         if before:
             url += "?before=" + str(before)
@@ -101,10 +101,11 @@ def fetch_history(username):
         if not page_ids:
             break
         oldest = min(page_ids)
+        oldest_found = oldest
         if before == oldest or oldest <= 1:
             break
         before = oldest
-    return posts
+    return posts, oldest_found
 
 
 cursor = json.loads(CURSOR.read_text()) if CURSOR.exists() else {"offset": 0, "seen": []}
@@ -113,14 +114,28 @@ items = json.loads(FEED.read_text()) if FEED.exists() else []
 if not isinstance(items, list):
     items = []
 
-# Merge recent public history on every run, so existing channels populate the site.
+# Fetch the newest posts every run and progressively backfill older history.
+# The persistent per-channel cursor prevents re-reading the same old pages forever.
 history_count = 0
+history_before = cursor.get("history_before", {})
 for username in sorted(ALLOWED):
-    for post in fetch_history(username):
+    recent_posts, recent_oldest = fetch_history(username, max_pages=2)
+    for post in recent_posts:
         if not any((old.get("id") == post["id"] or old.get("url") == post["url"]) for old in items):
             items.append(post)
             history_count += 1
         seen.add(post["id"])
+
+    if username not in history_before and recent_oldest is not None:
+        history_before[username] = recent_oldest
+    older_posts, older_oldest = fetch_history(username, before=history_before.get(username), max_pages=MAX_HISTORY_PAGES)
+    for post in older_posts:
+        if not any((old.get("id") == post["id"] or old.get("url") == post["url"]) for old in items):
+            items.append(post)
+            history_count += 1
+        seen.add(post["id"])
+    if older_oldest is not None:
+        history_before[username] = older_oldest
 
 # Bot API is optional for historical import; configure a secret to receive new posts.
 updates = []
@@ -176,5 +191,5 @@ for item in sorted(items, key=lambda item: str(item.get("date", "")), reverse=Tr
     keys.add(key)
     unique.append(item)
 FEED.write_text(json.dumps(unique[:100], ensure_ascii=False, indent=2) + "\n")
-CURSOR.write_text(json.dumps({"offset": offset, "seen": list(seen)[-500:]}, ensure_ascii=False, indent=2) + "\n")
+CURSOR.write_text(json.dumps({"offset": offset, "seen": list(seen)[-500:], "history_before": history_before}, ensure_ascii=False, indent=2) + "\n")
 print("Imported", history_count, "historical posts; processed", len(updates), "updates; feed has", min(len(unique), 100), "posts.")
