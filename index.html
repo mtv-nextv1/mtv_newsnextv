@@ -45,7 +45,7 @@ render();
 // Apply content published by the Creator Studio. This file is optional until the first publish.
 (async function loadPublishedContent(){
   try {
-    const response=await fetch('./mtv-content.json?_= '+Date.now(),{cache:'no-store'});
+    const response=await fetch('./mtv-content.json?_='+Date.now(),{cache:'no-store'});
     if(!response.ok)return;
     const published=await response.json();
     if(!published||typeof published!=='object'||Array.isArray(published))return;
