@@ -34,4 +34,24 @@ function delNews(i){if(role==='Модератор'){toast('Недостаточ�
 function addTeam(){if(role!=='Создатель')return;let name=document.getElementById('f_teamName').value.trim();if(!name){toast('Введите имя');return}data.team.push({name,role:document.getElementById('teamRole').value});save();openTab('team')}
 function exportData(){let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));a.download='mtv-content.json';a.click();URL.revokeObjectURL(a.href)}
 render();
+</script>
+<script>
+(async function loadTelegramNews(){
+  try {
+    const response = await fetch('./news.json', {cache:'no-store'});
+    if (!response.ok) return;
+    const posts = await response.json();
+    if (!Array.isArray(posts) || !posts.length) return;
+    const seen = new Set();
+    data.news = [...posts, ...(Array.isArray(data.news) ? data.news : [])].filter(post => {
+      const key = post.id || post.url || post.title;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 100);
+    render();
+  } catch (error) {
+    console.info('Telegram news feed is not available yet.');
+  }
+})();
 </script></body></html>
