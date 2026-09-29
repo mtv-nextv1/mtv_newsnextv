@@ -4,6 +4,7 @@ import os
 import re
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Public channel previews provide recent history; Bot API polling adds new posts.
@@ -151,7 +152,7 @@ if TOKEN:
             items.append({
                 "id": key,
                 "category": "TELEGRAM · " + username.upper(),
-                "date": post.get("date", ""),
+                "date": datetime.fromtimestamp(int(post.get("date", 0)), timezone.utc).strftime("%Y-%m-%d") if post.get("date") else "TELEGRAM",
                 "title": lines[0][:180],
                 "body": (" ".join(lines[1:]) if len(lines) > 1 else text)[:700],
                 "art": "TG",
