@@ -27,10 +27,10 @@ def telegram(method, params):
 
 
 def plain_text(fragment):
-    fragment = re.sub(r"(?i)<br\\s*/?>", "\\n", fragment)
-    fragment = re.sub(r"(?i)</(p|div|li)>", "\\n", fragment)
+    fragment = re.sub(r"(?i)<br\s*/?>", "\n", fragment)
+    fragment = re.sub(r"(?i)</(p|div|li)>", "\n", fragment)
     fragment = re.sub(r"<[^>]+>", "", fragment)
-    return re.sub(r"\\n{3,}", "\\n\\n", html.unescape(fragment)).strip()
+    return re.sub(r"\n{3,}", "\n\n", html.unescape(fragment)).strip()
 
 
 def fetch_history(username):
@@ -66,7 +66,7 @@ def fetch_history(username):
 
         page_ids = []
         for block in blocks:
-            match = re.search(r'data-post="' + re.escape(username) + r'/(\\d+)"', block)
+            match = re.search(r'data-post="' + re.escape(username) + r'/(\d+)"', block)
             if not match:
                 continue
             message_id = int(match.group(1))
@@ -174,6 +174,6 @@ for item in sorted(items, key=lambda item: str(item.get("date", "")), reverse=Tr
         continue
     keys.add(key)
     unique.append(item)
-FEED.write_text(json.dumps(unique[:100], ensure_ascii=False, indent=2) + "\\n")
-CURSOR.write_text(json.dumps({"offset": offset, "seen": list(seen)[-500:]}, ensure_ascii=False, indent=2) + "\\n")
+FEED.write_text(json.dumps(unique[:100], ensure_ascii=False, indent=2) + "\n")
+CURSOR.write_text(json.dumps({"offset": offset, "seen": list(seen)[-500:]}, ensure_ascii=False, indent=2) + "\n")
 print("Imported", history_count, "historical posts; processed", len(updates), "updates; feed has", min(len(unique), 100), "posts.")
