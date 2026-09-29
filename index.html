@@ -76,7 +76,9 @@ render();
       return p.url ? '<a class="card" href="'+esc(p.url)+'" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:inherit">'+card+'</a>' : '<article class="card">'+card+'</article>';
     }).join('') : '<div class="muted">Пока нет публикаций.</div>';
   };
-  let feed = [];
+  // Render the embedded feed immediately so the news section is never blank while network requests run.
+  let feed = normalize(backupFeed);
+  paint(feed);
   try {
     const urls = [
       new URL('news.json', location.href.split('?')[0].replace(/[^/]*$/, '')).href,
