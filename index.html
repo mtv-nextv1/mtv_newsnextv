@@ -46,9 +46,17 @@ render();
 <script>
 (async function loadTelegramNews(){
   try {
-    const response = await fetch('./news.json', {cache:'no-store'});
-    if (!response.ok) throw new Error('news.json HTTP '+response.status);
-    const payload = await response.json();
+    let payload = null, lastError = null;
+    const feedUrls = [new URL('news.json', document.baseURI).href, 'https://raw.githubusercontent.com/mtv-nextv1/mtv_newsnextv/main/news.json'];
+    for (const feedUrl of feedUrls) {
+      try {
+        const response = await fetch(feedUrl + (feedUrl.includes('?') ? '&' : '?') + '_=' + Date.now(), {cache:'no-store'});
+        if (!response.ok) throw new Error('HTTP ' + response.status + ' from ' + feedUrl);
+        payload = await response.json();
+        break;
+      } catch (err) { lastError = err; }
+    }
+    if (payload === null) throw (lastError || new Error('No news feed source available'));
     const rawPosts = Array.isArray(payload) ? payload : (Array.isArray(payload.news) ? payload.news : (Array.isArray(payload.posts) ? payload.posts : []));
     const posts = rawPosts.filter(post => post && typeof post === "object").map(post => ({id:post.id||post.message_id||post.url||post.link||"",url:post.url||post.link||"",category:post.category||post.channel||post.source||"TELEGRAM",date:post.date||post.published_at||post.timestamp||"TELEGRAM",title:post.title||post.text||post.message||post.caption||"",body:post.body||post.description||post.text||post.message||post.caption||"",art:post.art||"TG",color:post.color||"blue"})).filter(post=>String(post.title).trim());
     if (!posts.length) { render(); return; }
@@ -62,8 +70,9 @@ render();
     render();
   } catch (error) {
     console.error('Telegram news feed failed:', error);
+    render();
     const grid=document.getElementById('newsGrid');
-    if(grid && !grid.children.length) grid.innerHTML='<div class="muted">Не удалось загрузить новости. Обновите страницу или откройте Telegram-канал.</div>';
+    if(grid && !data.news?.length) grid.innerHTML='<div class="muted">Лента временно недоступна. Откройте Telegram-канал по кнопке выше.</div>';
   }
 })();
 </script>
